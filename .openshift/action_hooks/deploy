@@ -1,0 +1,65 @@
+#!/bin/bash
+
+echo "Starting deploy script"
+
+set -eux
+
+cd $OPENSHIFT_REPO_DIR
+curl -sSL https://github.com/yandod/candycane/archive/v0.9.3.tar.gz | tar xzf -
+mv candycane-0.9.3/ candycane/
+
+ln -s candycane/app/webroot php
+
+cd $OPENSHIFT_REPO_DIR/candycane
+
+rm .htaccess app/.htaccess
+
+sed -e '/RewriteEngine/a\    RewriteBase /' -i app/webroot/.htaccess
+
+cat <<'EOS' >app/Config/database.php
+<?php
+class DATABASE_CONFIG
+{
+    public $default = array();
+
+    public function __construct()
+    {
+        $this->default = array(
+            'datasource' => 'Database/Mysql',
+            'persistent' => false,
+            'host' => $_SERVER['OPENSHIFT_MYSQL_DB_HOST'],
+            'login' => $_SERVER['OPENSHIFT_MYSQL_DB_USERNAME'],
+            'password' => $_SERVER['OPENSHIFT_MYSQL_DB_PASSWORD'],
+            'database' => $_SERVER['OPENSHIFT_APP_NAME'],
+            'prefix' => '',
+            'port' => $_SERVER['OPENSHIFT_MYSQL_DB_PORT'],
+            'encoding' => 'utf8',
+        );
+    }
+}
+EOS
+
+if [ ! -f $OPENSHIFT_DATA_DIR/database ]; then
+    mysql --host $OPENSHIFT_MYSQL_DB_HOST --port $OPENSHIFT_MYSQL_DB_PORT \
+        --user $OPENSHIFT_MYSQL_DB_USERNAME --password=$OPENSHIFT_MYSQL_DB_PASSWORD \
+        --database=$OPENSHIFT_APP_NAME < app/Config/sql/mysql.sql
+    touch $OPENSHIFT_DATA_DIR/database
+fi
+
+rm -fr $OPENSHIFT_REPO_DIR/candycane/app/files
+rm -fr $OPENSHIFT_REPO_DIR/candycane/app/Plugin
+
+if [ ! -d $OPENSHIFT_DATA_DIR/app/files ]; then
+    mkdir -p $OPENSHIFT_DATA_DIR/app/files
+    chmod -R 777 $OPENSHIFT_DATA_DIR/app/files
+fi
+
+if [ ! -d $OPENSHIFT_DATA_DIR/app/Plugin ]; then
+    mkdir -p $OPENSHIFT_DATA_DIR/app/Plugin
+    chmod -R 777 $OPENSHIFT_DATA_DIR/app/Plugin
+fi
+
+ln -s $OPENSHIFT_DATA_DIR/app/files  $OPENSHIFT_REPO_DIR/candycane/app/files
+ln -s $OPENSHIFT_DATA_DIR/app/Plugin $OPENSHIFT_REPO_DIR/candycane/app/Plugin
+
+chmod -R 777 $OPENSHIFT_REPO_DIR/candycane/app/tmp
