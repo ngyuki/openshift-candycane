@@ -4,13 +4,13 @@ echo "Starting deploy script"
 
 set -eux
 
-cd $OPENSHIFT_REPO_DIR
+cd "$OPENSHIFT_REPO_DIR"
 curl -sSL https://github.com/yandod/candycane/archive/v0.9.3.tar.gz | tar xzf -
 mv candycane-0.9.3/ candycane/
 
 ln -s candycane/app/webroot php
 
-cd $OPENSHIFT_REPO_DIR/candycane
+cd "$OPENSHIFT_REPO_DIR/candycane"
 
 rm .htaccess app/.htaccess
 
@@ -39,27 +39,29 @@ class DATABASE_CONFIG
 }
 EOS
 
-if [ ! -f $OPENSHIFT_DATA_DIR/database ]; then
-    mysql --host $OPENSHIFT_MYSQL_DB_HOST --port $OPENSHIFT_MYSQL_DB_PORT \
-        --user $OPENSHIFT_MYSQL_DB_USERNAME --password=$OPENSHIFT_MYSQL_DB_PASSWORD \
-        --database=$OPENSHIFT_APP_NAME < app/Config/sql/mysql.sql
-    touch $OPENSHIFT_DATA_DIR/database
+if ! mysql --host="$OPENSHIFT_MYSQL_DB_HOST" --port="$OPENSHIFT_MYSQL_DB_PORT" \
+    --user="$OPENSHIFT_MYSQL_DB_USERNAME" --password="$OPENSHIFT_MYSQL_DB_PASSWORD" \
+    --database="$OPENSHIFT_APP_NAME" -e "select 1 from workflows limit 1" ];
+then
+    mysql --host="$OPENSHIFT_MYSQL_DB_HOST" --port="$OPENSHIFT_MYSQL_DB_PORT" \
+    --user="$OPENSHIFT_MYSQL_DB_USERNAME" --password="$OPENSHIFT_MYSQL_DB_PASSWORD" \
+    --database="$OPENSHIFT_APP_NAME" < app/Config/sql/mysql.sql
 fi
 
-rm -fr $OPENSHIFT_REPO_DIR/candycane/app/files
-rm -fr $OPENSHIFT_REPO_DIR/candycane/app/Plugin
+rm -fr "$OPENSHIFT_REPO_DIR/candycane/app/files"
+rm -fr "$OPENSHIFT_REPO_DIR/candycane/app/Plugin"
 
-if [ ! -d $OPENSHIFT_DATA_DIR/app/files ]; then
-    mkdir -p $OPENSHIFT_DATA_DIR/app/files
-    chmod -R 777 $OPENSHIFT_DATA_DIR/app/files
+if [ ! -d "$OPENSHIFT_DATA_DIR/app/files" ]; then
+    mkdir -p "$OPENSHIFT_DATA_DIR/app/files"
+    chmod -R 777 "$OPENSHIFT_DATA_DIR/app/files"
 fi
 
-if [ ! -d $OPENSHIFT_DATA_DIR/app/Plugin ]; then
-    mkdir -p $OPENSHIFT_DATA_DIR/app/Plugin
-    chmod -R 777 $OPENSHIFT_DATA_DIR/app/Plugin
+if [ ! -d "$OPENSHIFT_DATA_DIR/app/Plugin" ]; then
+    mkdir -p "$OPENSHIFT_DATA_DIR/app/Plugin"
+    chmod -R 777 "$OPENSHIFT_DATA_DIR/app/Plugin"
 fi
 
-ln -s $OPENSHIFT_DATA_DIR/app/files  $OPENSHIFT_REPO_DIR/candycane/app/files
-ln -s $OPENSHIFT_DATA_DIR/app/Plugin $OPENSHIFT_REPO_DIR/candycane/app/Plugin
+ln -s "$OPENSHIFT_DATA_DIR/app/files"  "$OPENSHIFT_REPO_DIR/candycane/app/files"
+ln -s "$OPENSHIFT_DATA_DIR/app/Plugin" "$OPENSHIFT_REPO_DIR/candycane/app/Plugin"
 
-chmod -R 777 $OPENSHIFT_REPO_DIR/candycane/app/tmp
+chmod -R 777 "$OPENSHIFT_REPO_DIR/candycane/app/tmp"
